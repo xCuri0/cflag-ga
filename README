@@ -4,4 +4,4 @@ Find the best CFlags to use by using a genetic algorithm
 # How to use
 Included in ```./examples``` is a example configuration for a Makefile based program. Modify it to your needs
 
-It's recommended that you use the performance governor and increase the process priority to improve benchmark accuracy
+It's recommended that you use the performance governor and disable turbo to improve benchmark accuracy

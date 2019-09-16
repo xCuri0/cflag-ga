@@ -62,42 +62,45 @@ if not args.nolto:
     flags.extend(lto)
 
 sqrt = int(math.sqrt(len(flags)))
-fbest = []
+fbest = {}
 
-for file in config.files:
-    parent = []
-    best = []
+try:
+    for file in config.files:
+        parent = []
+        baseline = config.benchmark([], file)
+        print(f"Baseline for {file} is {baseline} seconds")
+        # Start evolution
+        for gen in range(1, MAXGEN): # 100 maximum generations
+            res = []
 
-    baseline = config.benchmark([], file)
-    print(f"Baseline for {file} is {baseline} seconds")
-    # Start evolution
-    for gen in range(1, MAXGEN): # 100 maximum generations
-        res = []
+            if file not in fbest:
+                pop = [mate([random.sample(flags, sqrt), random.sample(flags, sqrt)]) for i in range(POP)]
+            else:
+                pop = [mate([fbest[file][1], parent[1]]) for i in range(POP)]
 
-        if not parent:
-            pop = [mate([random.sample(flags, sqrt), random.sample(flags, sqrt)]) for i in range(POP)]
-        else:
-            pop = [mate([parent, random.sample(flags, sqrt)]) for i in range(POP)]
+            for p in pop:
+                try:
+                    res.append([baseline - config.benchmark(p, file), p])
+                except AssertionError:
+                    continue
 
-        for p in pop:
-            try:
-                res.append([baseline - config.benchmark(p, file), p])
-            except AssertionError:
-                continue
+            res.sort(key=lambda x: x[0], reverse=True)
+            if res[0][0] > 0:
+                if file not in fbest or res[0][0] > fbest[file][0]:
+                    parent = res[1]
+                    fbest[file] = res[0]
+                else:
+                    parent = res[0]
 
-        res.sort(key=lambda x: x[0], reverse=True)
-        if res[0][0] > 0:
-            parent = res[0][1]
-            best.append(res[0])
+            print(f'Generation {gen} {baseline - res[0][0]} {" ".join(str(x) for x in res[0][1])}')
 
-        print(f'Generation {gen} {res[0][0]} {" ".join(str(x) for x in res[0][1])}')
+        print(f'Best for {file} is {baseline - fbest[file][0]} {" ".join(str(x) for x in fbest[file][1])}')
 
-    best.sort(key=lambda x: x[0], reverse=True)
-    print(f'Best for {file} is {best[0][0]} {" ".join(str(x) for x in best[0][1])}')
+except KeyboardInterrupt:
+    pass
 
-    fbest.append([file, best[0][1]])
-
-if args.output:
+if args.output and fbest:
+    print(f'Writing to {args.output}')
     with open(args.output, 'w') as out:
-        for r in fbest:
-            print(str(r[0]) + ":" + " ".join(str(x) for x in r[1]), file=out)
+        for r in fbest.items():
+            print(f'{r[0]}:{" ".join(str(x) for x in r[1][1])}\n', file=out)
